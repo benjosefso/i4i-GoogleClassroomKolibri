@@ -1,7 +1,7 @@
 # i4i-GoogleClassroomKolibri
 
 
-The quickstart at the moment just runs in command prompt if you have python downloade.
+The quickstart at the moment just runs in command prompt if you have python downloaded.
 
 https://developers.google.com/classroom/quickstart/python    GO HERE TO FOLLOW PYTHON DOWNLOAD INSTRUCTIONS
 
