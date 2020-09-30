@@ -1,26 +1,22 @@
 # i4i-GoogleClassroomKolibri
 
-
-The quickstart at the moment just runs in command prompt if you have python downloaded.
-
-https://developers.google.com/classroom/quickstart/python    GO HERE TO FOLLOW PYTHON DOWNLOAD INSTRUCTIONS
-
-
-You must have a google classroom that has some assignments in it to work. Make one of your own quickly or join mine with this link.
-
-https://classroom.google.com/c/MTY0ODMxNDY1MzE1?cjc=7lyyd37
-
-
-If it doesnt work with student permissions let me know and I can give you teacher access.
-
-What other fucntionality should we give it before we show Jigar?
-
-
-
 HOW TO RUN
 
-Run quickstart.py and it should open a google browser fopr you to sign in and give permissions to access a specific googleclassroom account
+1. Run gc_scraper.py in command line
+2. Provide access to the google account connected to the Google Classroom course you wish to access
+3. Select the course number when prompted.
+4. Run kolibri_uploader.py and provide your token when prompted.
+5. The uploader should take the JSON file created by the scraper and create the kolibri channel.
+6. At this point you must log on to Kolibri Studio, open the created channel, 
+   and hit the update button to see your changes.
 
-Select account
 
-Run shushichef.py and provide the token when asked b4a40e441ab0f7dc98b34e16ada81fada6bc16d6
+
+Find your individual Kolibri Studio token at https://studio.learningequality.org/settings/tokens
+
+Must have python installed as well as the google classroom and ricecooker apis.
+
+https://developers.google.com/classroom/quickstart/python
+https://ricecooker.readthedocs.io/en/latest/installation.html
+
+My google classroom api credential file is provided but you can get your own at the link above.
