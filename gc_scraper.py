@@ -11,10 +11,17 @@ SCOPES = ['https://www.googleapis.com/auth/classroom.courses.readonly',
 'https://www.googleapis.com/auth/classroom.coursework.students',
 'https://www.googleapis.com/auth/classroom.topics.readonly']
 
+"""
+    Google Classroom Scraper by Ben Josefson 
+    Script utilitzing Google Classroom API to scrape data from a Google Classroom Course
+    
+    Access to a google account and permissions to access certain Google Classroom Data
+    must be granted.
+    
+    9/30/2020
+    """
+
 def main():
-    """
-    Prints all coursework for selected course.
-    """
     creds = None
     # The file token.pickle stores the user's access and refresh tokens, and is
     # created automatically when the authorization flow completes for the first
@@ -73,47 +80,33 @@ def main():
             inputcoursenum= int(input()) -1
             selectedCourse = courses[inputcoursenum]
             selectedCourseId = selectedCourse["id"]
-            print(selectedCourseId)
 
-            #Cration of Completed Course Object to be passed to JSON
+            #Creation of Completed Course Object to be passed to JSON with GC Course object
             thisCourse = CompleteCourse(selectedCourse)
 
-            print(selectedCourse)
-            
-
+            #Retrieve list of topics
             results = service.courses().topics().list(courseId=selectedCourseId).execute()
             topicslist = results.get('topic', [])
-
-            #print(topicslist)
-            #print(results)
 
             if not topicslist:
                  print('No topics found.')
             else:
-                 print('Topics:')
-        
                  for topic in topicslist:
-                     print(topic['name'])
-
-                     #Write all topic metadata to json
+                     #Store topic data
                      thisCourse.courseTopics[topic['name']] = topic
-
+                        
+            #Retrieve list of coursework
             results = service.courses().courseWork().list(courseId=selectedCourseId).execute()
             courseworks = results.get('courseWork', [])
 
-            #print(courseworks)
-
             if not courseworks:
                  print('No coursework found.')
-            else:
-                 print('Coursework:')
-        
+            else:     
                  for courseWork in courseworks:
-                     print(courseWork['title'])
-
-                     #Write all assignment metadata
+                     #Store coursework data
                      thisCourse.courseAssignments[courseWork['title']]=courseWork
-
+                     
+        #Dump all course information to JSON file gc_data.json
         json.dump(thisCourse,gc_data,indent=1,default=encode_CompleteCourse)
             
 
