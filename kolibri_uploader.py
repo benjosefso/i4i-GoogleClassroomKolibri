@@ -8,7 +8,20 @@ from ricecooker.classes.licenses import get_license
 import json
 import requests
 
-
+"""
+   Kolibri Uploader by Ben Josefson 9/30/2020
+   Takes the json representation of a Google Classroom course and creates a Kolibri Channel with a similar structure.
+   
+   Currently does the following:
+   1. Copys topics and topic data
+   2. Copys assignments to their respective topics with metadata
+   3. Downloads youtube videos attached to assignments
+   
+   To Do:
+   1. Copy assignments not linked to a topic
+   2. Download webpages/links
+   3. Download documents and convert to pdf
+"""
 
 class MyChef(SushiChef):
     with open('gc_data.json', mode='r') as gc_data:
@@ -69,6 +82,7 @@ class MyChef(SushiChef):
                                 elif "driveFile" in spec_mat:
 
                                     """  THIS DOESNT WORK RIGHT NOW BUT IT SHOULD CONVERT A DOC TO PDF I SUBMITTED A TICKET TO LEARNING EQUALITY
+                                    
                                     def save_response_content(response, filename):
                                         with open(filename, 'wb') as localfile:
                                             localfile.write(response.content)
@@ -112,7 +126,9 @@ class MyChef(SushiChef):
 if __name__ == "__main__":
     """
     Run this script on the command line using:
-        python sushichef.py  --token=b4a40e441ab0f7dc98b34e16ada81fada6bc16d6
+        python sushichef.py  --token=b4a40e441ab0f7dc98b34e16ada81fada6bc16d6 
+        The token above is Ben's personal token, your own can be found on Kolibri studio at 
+        https://studio.learningequality.org/settings/tokens
     """
     simple_chef = MyChef()
     simple_chef.main()
