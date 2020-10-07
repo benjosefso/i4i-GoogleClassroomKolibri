@@ -7,6 +7,7 @@ from ricecooker.classes.files import DocumentFile, AudioFile, VideoFile, YouTube
 from ricecooker.classes.licenses import get_license
 import json
 import requests
+from slugify import slugify #pip install slugify 
 
 """
    Kolibri Uploader by Ben Josefson 9/30/2020
@@ -48,7 +49,10 @@ class MyChef(SushiChef):
                 channel.add_child(topic)
 
                 for a_id, a_info in courseData['Assignments'].items():
-                    assignment = TopicNode(title = a_info['title'], source_id = a_info['id'], description = a_info['description'])
+                    try:
+                        assignment = TopicNode(title = a_info['title'], source_id = a_info['id'], description = a_info['description'])
+                    except:
+                        assignment = TopicNode(title = a_info['title'], source_id = a_info['id'])
 
                     if a_info['topicId'] == t_info['topicId']:
                         topic.add_child(assignment)
@@ -81,39 +85,22 @@ class MyChef(SushiChef):
                                     #Might not add this case
                                 elif "driveFile" in spec_mat:
 
-                                    """  THIS DOESNT WORK RIGHT NOW BUT IT SHOULD CONVERT A DOC TO PDF I SUBMITTED A TICKET TO LEARNING EQUALITY
-                                    
-                                    def save_response_content(response, filename):
-                                        with open(filename, 'wb') as localfile:
-                                            localfile.write(response.content)
-
-                                    # Download a .docx file
-                                    docx_url = spec_mat["driveFile"]["driveFile"]["alternateLink"]
-                                    response1 = requests.get(docx_url)
-                                    save_response_content(response1, 'document.docx')
-
-                                    # Convert it
-                                    microwave_url = 'http://35.185.105.222:8989/unoconv/pdf'
-                                    files = {'file': open('document.docx', 'rb')}
-                                    response = requests.post(microwave_url, files=files)
-                                    save_response_content(response, 'document.pdf')
+                                    title_name = slugify(spec_mat["driveFile"]["driveFile"]["title"])+".pdf"
 
                                     document_node = DocumentNode(
-                                        source_id='uniqid005',
-                                        title='The Supreme Court\u2019s Ruling in Brown vs. Board of Education',
-                                        author='First Last (author\'s name)',
-                                        description='Put file description here',
+                                        source_id=spec_mat["driveFile"]["driveFile"]["id"],
+                                        title=spec_mat["driveFile"]["driveFile"]["title"],
                                         language=getlang('en').id,
                                         license=get_license(licenses.CC_BY, copyright_holder='Copyright holder name'),
                                         thumbnail=None,
                                         files=[DocumentFile(
-                                                    path='document.pdf',
+                                                    path=str(title_name),
                                                     language=getlang('en').id
                                             )]
                                     )
                                     assignment.add_child(document_node)
                                     
-                                    """
+                                    
                                    
                               
 
