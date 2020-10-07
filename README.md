@@ -14,9 +14,13 @@ HOW TO RUN
 
 Find your individual Kolibri Studio token at https://studio.learningequality.org/settings/tokens
 
-Must have python installed as well as the google classroom and ricecooker apis.
+Must have python installed as well as the google classroom, google drive and ricecooker apis.
 
 https://developers.google.com/classroom/quickstart/python
 https://ricecooker.readthedocs.io/en/latest/installation.html
+https://developers.google.com/drive/api/v3/quickstart/python
 
 My google classroom api credential file is provided but you can get your own at the link above.
+You must authorize google drive by adding it to your api project at this link https://console.developers.google.com/
+
+Also pip install slugify
