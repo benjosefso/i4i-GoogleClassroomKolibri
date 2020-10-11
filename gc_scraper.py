@@ -3,6 +3,7 @@ import pickle
 import os.path
 import json
 import io
+import os
 from slugify import slugify
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -26,8 +27,80 @@ SCOPES = ['https://www.googleapis.com/auth/classroom.courses.readonly',
     Access to a google account and permissions to access certain Google Classroom Data
     must be granted.
     
-    9/30/2020
-    """
+    10/11/2020
+"""
+
+#Mime-Type lists for handling of different versions
+ppMime = {"application/vnd.ms-powerpoint",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "application/vnd.openxmlformats-officedocument.presentationml.template",
+            "application/vnd.openxmlformats-officedocument.presentationml.slideshow",
+            "application/vnd.ms-powerpoint.addin.macroEnabled.12",
+            "application/vnd.ms-powerpoint.presentation.macroEnabled.12",
+            "application/vnd.ms-powerpoint.template.macroEnabled.12",
+            "application/vnd.ms-powerpoint.slideshow.macroEnabled.12"
+}
+docMime = {"application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.template",
+            "application/vnd.ms-word.document.macroEnabled.12",
+            "application/vnd.ms-word.template.macroEnabled.12"
+}
+exMime = {"application/vnd.ms-excel",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.template",
+            "application/vnd.ms-excel.sheet.macroEnabled.12",
+            "application/vnd.ms-excel.template.macroEnabled.12",
+            "application/vnd.ms-excel.addin.macroEnabled.12",
+            "application/vnd.ms-excel.sheet.binary.macroEnabled.12"
+}
+imgMime = {"image/bmp", "image/gif", "image/jpeg", "image/vnd.microsoft.icon",
+            "image/png", "image/svg+xml", "image/ttf", "image/webp"
+}
+gooMime = {"application/vnd.google-apps.document", 
+            "application/vnd.google-apps.presentation", 
+            "application/vnd.google-apps.spreadsheet", 
+            "application/vnd.google-apps.drawing"
+}
+
+#Document extentions to google extensions
+extensions = {"docx" : "document",
+                "pptx" : "presentation",
+                "xlsx" : "spreadsheet",
+                "png"  : "drawing"
+}
+
+def doc_convert(file_id, file_name):
+    converted = service2.files().export_media(fileId=file_id,mimeType='application/pdf')
+    fh = io.BytesIO()
+    downloader = MediaIoBaseDownload(fh, converted)
+    done = False
+    while done is False:
+        status, done = downloader.next_chunk()
+
+    with open("documents/" + file_name + ".pdf",'wb') as out:
+        out.write(fh.getvalue())
+                    
+
+def doc_googlfy(ext, file_id):
+    request = service2.files().get_media(fileId=file_id)
+    fh = io.BytesIO()
+    downloader = MediaIoBaseDownload(fh, request)
+    done = False
+    while done is False:
+        status, done = downloader.next_chunk()
+
+    with open("documents/tempdoc." + ext,'wb') as out:
+        out.write(fh.getvalue())
+
+    file_metadata = {
+        'name': 'Temp File',
+        'mimeType': 'application/vnd.google-apps.' + extensions[ext]
+    }
+    media = MediaFileUpload("documents/tempdoc." + ext, resumable=True)
+    convertFile = service2.files().create(body=file_metadata,media_body=media,fields='id').execute()
+    file_id = convertFile['id']
+    return file_id
 
 def main():
     creds = None
@@ -73,192 +146,88 @@ def main():
     results = service.courses().list(pageSize=10).execute()
     courses = results.get('courses', [])
 
-    # Open JSON Writer
-    with open('gc_data.json', mode='w') as gc_data:
+    if not courses:
+        print('No courses found.')
+    else:
+        print('Courses:')
+        i = 1
+        for course in courses:
+            print(str(i)+' '+course['name'])
+            i+=1
 
-        if not courses:
-            print('No courses found.')
+        print("Select a course:")
+        inputcoursenum= int(input()) -1
+        selectedCourse = courses[inputcoursenum]
+        selectedCourseId = selectedCourse["id"]
+
+        #Creation of Completed Course Object to be passed to JSON with GC Course object
+        thisCourse = CompleteCourse(selectedCourse)
+
+        #Retrieve list of topics
+        results = service.courses().topics().list(courseId=selectedCourseId).execute()
+        topicslist = results.get('topic', [])
+
+        if not topicslist:
+                print('No topics found.')
         else:
-            print('Courses:')
-            i = 1
-            for course in courses:
-                print(str(i)+' '+course['name'])
-                i+=1
+                for topic in topicslist:
+                    #Store topic data
+                    thisCourse.courseTopics[topic['name']] = topic
+                
+        #Retrieve list of coursework
+        results = service.courses().courseWork().list(courseId=selectedCourseId).execute()
+        courseworks = results.get('courseWork', [])
 
-            print("Select a course:")
-            inputcoursenum= int(input()) -1
-            selectedCourse = courses[inputcoursenum]
-            selectedCourseId = selectedCourse["id"]
+        if not courseworks:
+            print('No coursework found.')
+        else:     
+            for courseWork in courseworks:
+                #Store coursework data
+                thisCourse.courseAssignments[courseWork["title"]]=courseWork
 
-            #Creation of Completed Course Object to be passed to JSON with GC Course object
-            thisCourse = CompleteCourse(selectedCourse)
+                #Check for driveFiles to be downloaded
+                if "materials" in thisCourse.courseAssignments[courseWork["title"]]:
+                    for spec_mat in thisCourse.courseAssignments[courseWork["title"]]["materials"]:
+                        if "driveFile" in spec_mat:
+                            file_name = slugify(spec_mat["driveFile"]["driveFile"]["title"])
+                            file_id = spec_mat["driveFile"]["driveFile"]["id"]
+                            file = service2.files().get(fileId=file_id).execute()
+                            print(file["mimeType"])
 
-            #Retrieve list of topics
-            results = service.courses().topics().list(courseId=selectedCourseId).execute()
-            topicslist = results.get('topic', [])
+                            #WORD DOCUMENT
+                            if file["mimeType"] in docMime:
+                                googId=doc_googlfy("docx", file_id)
+                                doc_convert(googId,file_name)
+                                service2.files().delete(fileId=googId).execute()
 
-            if not topicslist:
-                 print('No topics found.')
-            else:
-                 for topic in topicslist:
-                     #Store topic data
-                     thisCourse.courseTopics[topic['name']] = topic
-                        
-            #Retrieve list of coursework
-            results = service.courses().courseWork().list(courseId=selectedCourseId).execute()
-            courseworks = results.get('courseWork', [])
+                            #POWERPOINT PRESENTATION
+                            elif file["mimeType"] in ppMime:
+                                googId=doc_googlfy("pptx", file_id)
+                                doc_convert(googId,file_name)
+                                service2.files().delete(fileId=googId).execute()
+                                    
+                            #EXCEL DOCUMENT
+                            elif file["mimeType"] in exMime:
+                                googId=doc_googlfy("xlsx", file_id)
+                                doc_convert(googId,file_name)
+                                service2.files().delete(fileId=googId).execute()
+                                                                   
+                            #IMAGE
+                            elif file["mimeType"] in imgMime:
+                                googId=doc_googlfy("png", file_id)
+                                doc_convert(googId,file_name)
+                                service2.files().delete(fileId=googId).execute()
 
-            if not courseworks:
-                 print('No coursework found.')
-            else:     
-                 for courseWork in courseworks:
-                     #Store coursework data
-                     thisCourse.courseAssignments[courseWork["title"]]=courseWork
+                            #ALREADY GOOGLE FORMAT
+                            elif file["mimeType"] in gooMime:
+                                doc_convert(file_id, file_name)
 
-                     #Check for DriveFiles to be downloaded
-                     if "materials" in thisCourse.courseAssignments[courseWork["title"]]:
-                        for spec_mat in thisCourse.courseAssignments[courseWork["title"]]["materials"]:
-                            if "driveFile" in spec_mat:
-                                file_name = slugify(spec_mat["driveFile"]["driveFile"]["title"])
-                                file_id = spec_mat["driveFile"]["driveFile"]["id"]
-
-                                file = service2.files().get(fileId=file_id).execute()
-                                print(file["mimeType"])
-
-                                #WORD DOCUMENT
-                                if file["mimeType"] == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-                                    request = service2.files().get_media(fileId=file_id)
-                                    fh = io.BytesIO()
-                                    downloader = MediaIoBaseDownload(fh, request)
-                                    done = False
-                                    while done is False:
-                                        status, done = downloader.next_chunk()
-
-                                    print(fh)
-                                    with open("tempdoc.docx",'wb') as out:
-                                        out.write(fh.getvalue())
-
-                                    file_metadata = {
-                                        'name': 'My Report',
-                                        'mimeType': 'application/vnd.google-apps.document'
-                                    }
-                                    media = MediaFileUpload('temploc.docx',resumable=True)
-                                    file = service2.files().create(body=file_metadata,media_body=media,fields='id').execute()
-                                    file_id = file['id']
-                                    converted = service2.files().export_media(fileId=file_id,mimeType='application/pdf')
-                                    fh = io.BytesIO()
-                                    downloader = MediaIoBaseDownload(fh, converted)
-                                    done = False
-                                    while done is False:
-                                        status, done = downloader.next_chunk()
-
-                                    with open(file_name + ".pdf",'wb') as out:
-                                        out.write(fh.getvalue())
-
-
-                                #GOOGLE DOCUMENT
-                                elif file["mimeType"] == "application/vnd.google-apps.document":
-                                    converted = service2.files().export_media(fileId=file_id,mimeType='application/pdf')
-                                    fh = io.BytesIO()
-                                    downloader = MediaIoBaseDownload(fh, converted)
-                                    done = False
-                                    while done is False:
-                                        status, done = downloader.next_chunk()
-
-                                    with open(file_name + ".pdf",'wb') as out:
-                                        out.write(fh.getvalue())
-
-
-                                #POWERPOINT PRESENTATION
-                                elif file["mimeType"] == "application/vnd.openxmlformats-officedocument.presentationml.presentation":
-                                    request = service2.files().get_media(fileId=file_id)
-                                    fh = io.BytesIO()
-                                    downloader = MediaIoBaseDownload(fh, request)
-                                    done = False
-                                    while done is False:
-                                        status, done = downloader.next_chunk()
-
-                                    print(fh)
-                                    with open("temploc.pptx",'wb') as out:
-                                        out.write(fh.getvalue())
-
-                                    file_metadata = {
-                                        'name': 'My Presentation',
-                                        'mimeType': 'application/vnd.google-apps.presentation'
-                                    }
-                                    media = MediaFileUpload('temploc.pptx',resumable=True)
-                                    file = service2.files().create(body=file_metadata,media_body=media,fields='id').execute()
-                                    file_id = file['id']
-                                    converted = service2.files().export_media(fileId=file_id,mimeType='application/pdf')
-                                    fh = io.BytesIO()
-                                    downloader = MediaIoBaseDownload(fh, converted)
-                                    done = False
-                                    while done is False:
-                                        status, done = downloader.next_chunk()
-
-                                    with open(file_name + ".pdf",'wb') as out:
-                                        out.write(fh.getvalue())
-
-
-                                #GOOGLE SLIDES
-                                elif file["mimeType"] == "application/vnd.google-apps.presentation":
-                                    converted = service2.files().export_media(fileId=file_id,mimeType='application/pdf')
-                                    fh = io.BytesIO()
-                                    downloader = MediaIoBaseDownload(fh, converted)
-                                    done = False
-                                    while done is False:
-                                        status, done = downloader.next_chunk()
-
-                                    with open(file_name + ".pdf",'wb') as out:
-                                        out.write(fh.getvalue())
-
-
-                                #EXCEL DOCUMENT
-                                elif file["mimeType"] == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
-                                    request = service2.files().get_media(fileId=file_id)
-                                    fh = io.BytesIO()
-                                    downloader = MediaIoBaseDownload(fh, request)
-                                    done = False
-                                    while done is False:
-                                        status, done = downloader.next_chunk()
-
-                                    print(fh)
-                                    with open("temploc.xlsx",'wb') as out:
-                                        out.write(fh.getvalue())
-
-                                    file_metadata = {
-                                        'name': 'My Spreadsheet',
-                                        'mimeType': 'application/vnd.google-apps.spreadsheet'
-                                    }
-                                    media = MediaFileUpload('temploc.xlsx',resumable=True)
-                                    file = service2.files().create(body=file_metadata,media_body=media,fields='id').execute()
-                                    file_id = file['id']
-                                    converted = service2.files().export_media(fileId=file_id,mimeType='application/pdf')
-                                    fh = io.BytesIO()
-                                    downloader = MediaIoBaseDownload(fh, converted)
-                                    done = False
-                                    while done is False:
-                                        status, done = downloader.next_chunk()
-
-                                    with open(file_name + ".pdf",'wb') as out:
-                                        out.write(fh.getvalue())
-
-
-                                #GOOGLE SHEETS
-                                elif file["mimeType"] == "application/vnd.google-apps.spreadsheet":
-                                    converted = service2.files().export_media(fileId=file_id,mimeType='application/pdf')
-                                    fh = io.BytesIO()
-                                    downloader = MediaIoBaseDownload(fh, converted)
-                                    done = False
-                                    while done is False:
-                                        status, done = downloader.next_chunk()
-
-                                    with open(file_name + ".pdf",'wb') as out:
-                                        out.write(fh.getvalue())
+                            else:
+                                print("File type not recognized.")
                                     
                      
-        #Dump all course information to JSON file gc_data.json
-        json.dump(thisCourse,gc_data,indent=1,default=encode_CompleteCourse)
+    #Dump all course information to JSON file gc_data.json
+    json.dump(thisCourse,gc_data,indent=1,default=encode_CompleteCourse)
             
 
 if __name__ == '__main__':
