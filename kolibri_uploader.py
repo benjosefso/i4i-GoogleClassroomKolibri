@@ -7,7 +7,7 @@ from ricecooker.classes.files import DocumentFile, AudioFile, VideoFile, YouTube
 from ricecooker.classes.licenses import get_license
 import json
 import requests
-from slugify import slugify #pip install slugify 
+from slugify import slugify
 
 """
    Kolibri Uploader by Ben Josefson 9/30/2020
@@ -17,11 +17,11 @@ from slugify import slugify #pip install slugify
    1. Copys topics and topic data
    2. Copys assignments to their respective topics with metadata
    3. Downloads youtube videos attached to assignments
+   4. Uploads documents
    
    To Do:
    1. Copy assignments not linked to a topic
    2. Download webpages/links
-   3. Download documents and convert to pdf
 """
 
 class MyChef(SushiChef):
@@ -85,7 +85,7 @@ class MyChef(SushiChef):
                                     #Might not add this case
                                 elif "driveFile" in spec_mat:
 
-                                    title_name = slugify(spec_mat["driveFile"]["driveFile"]["title"])+".pdf"
+                                    docPath = "documents/" + slugify(spec_mat["driveFile"]["driveFile"]["title"]) + ".pdf"
 
                                     document_node = DocumentNode(
                                         source_id=spec_mat["driveFile"]["driveFile"]["id"],
@@ -94,7 +94,7 @@ class MyChef(SushiChef):
                                         license=get_license(licenses.CC_BY, copyright_holder='Copyright holder name'),
                                         thumbnail=None,
                                         files=[DocumentFile(
-                                                    path=str(title_name),
+                                                    path=str(docPath),
                                                     language=getlang('en').id
                                             )]
                                     )
