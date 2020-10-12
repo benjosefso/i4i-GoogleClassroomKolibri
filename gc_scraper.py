@@ -70,8 +70,8 @@ extensions = {"docx" : "document",
                 "png"  : "drawing"
 }
 
-def doc_convert(file_id, file_name):
-    converted = service2.files().export_media(fileId=file_id,mimeType='application/pdf')
+def doc_convert(file_id, file_name, service):
+    converted = service.files().export_media(fileId=file_id,mimeType='application/pdf')
     fh = io.BytesIO()
     downloader = MediaIoBaseDownload(fh, converted)
     done = False
@@ -82,8 +82,8 @@ def doc_convert(file_id, file_name):
         out.write(fh.getvalue())
                     
 
-def doc_googlfy(ext, file_id):
-    request = service2.files().get_media(fileId=file_id)
+def doc_googlfy(ext, file_id, service):
+    request = service.files().get_media(fileId=file_id)
     fh = io.BytesIO()
     downloader = MediaIoBaseDownload(fh, request)
     done = False
@@ -98,7 +98,7 @@ def doc_googlfy(ext, file_id):
         'mimeType': 'application/vnd.google-apps.' + extensions[ext]
     }
     media = MediaFileUpload("documents/tempdoc." + ext, resumable=True)
-    convertFile = service2.files().create(body=file_metadata,media_body=media,fields='id').execute()
+    convertFile = service.files().create(body=file_metadata,media_body=media,fields='id').execute()
     file_id = convertFile['id']
     return file_id
 
@@ -196,38 +196,39 @@ def main():
 
                             #WORD DOCUMENT
                             if file["mimeType"] in docMime:
-                                googId=doc_googlfy("docx", file_id)
-                                doc_convert(googId,file_name)
+                                googId=doc_googlfy("docx", file_id, service2)
+                                doc_convert(googId,file_name, service2)
                                 service2.files().delete(fileId=googId).execute()
 
                             #POWERPOINT PRESENTATION
                             elif file["mimeType"] in ppMime:
-                                googId=doc_googlfy("pptx", file_id)
-                                doc_convert(googId,file_name)
+                                googId=doc_googlfy("pptx", file_id, service2)
+                                doc_convert(googId,file_name, service2)
                                 service2.files().delete(fileId=googId).execute()
                                     
                             #EXCEL DOCUMENT
                             elif file["mimeType"] in exMime:
-                                googId=doc_googlfy("xlsx", file_id)
-                                doc_convert(googId,file_name)
+                                googId=doc_googlfy("xlsx", file_id, service2)
+                                doc_convert(googId,file_name, service2)
                                 service2.files().delete(fileId=googId).execute()
                                                                    
                             #IMAGE
                             elif file["mimeType"] in imgMime:
-                                googId=doc_googlfy("png", file_id)
-                                doc_convert(googId,file_name)
+                                googId=doc_googlfy("png", file_id, service2)
+                                doc_convert(googId,file_name, service2)
                                 service2.files().delete(fileId=googId).execute()
 
                             #ALREADY GOOGLE FORMAT
                             elif file["mimeType"] in gooMime:
-                                doc_convert(file_id, file_name)
+                                doc_convert(file_id, file_name, service2)
 
                             else:
                                 print("File type not recognized.")
                                     
                      
     #Dump all course information to JSON file gc_data.json
-    json.dump(thisCourse,gc_data,indent=1,default=encode_CompleteCourse)
+    with open("gc_data.json", "w") as gc_data
+        json.dump(thisCourse,gc_data,indent=1,default=encode_CompleteCourse)
             
 
 if __name__ == '__main__':
