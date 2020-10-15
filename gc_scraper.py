@@ -102,6 +102,23 @@ def doc_googlfy(ext, file_id, service):
     file_id = convertFile['id']
     return file_id
 
+#Create Comprehensive Course Class to be converted to json
+class CompleteCourse:
+    def __init__(self,course):
+        self.course = course
+            
+
+    courseTopics = {}
+    courseAssignments = {}
+
+#Define custom encoding for this class to JSON
+def encode_CompleteCourse(x):
+    if isinstance(x, CompleteCourse):
+        return { "Course" : x.course, "Topics" : x.courseTopics, "Assignments" : x.courseAssignments}
+    else:
+        type_name = z.__class__.__name__
+        raise TypeError(f"Object of type '{type_name}' is not JSON serializable")
+
 def main():
     creds = None
     # The file token.pickle stores the user's access and refresh tokens, and is
@@ -125,22 +142,6 @@ def main():
     service = build('classroom', 'v1', credentials=creds)
     service2 = build('drive', 'v3', credentials=creds)
 
-    #Create Comprehensive Course Class to be converted to json
-    class CompleteCourse:
-        def __init__(self,course):
-            self.course = course
-            
-
-        courseTopics = {}
-        courseAssignments = {}
-
-    #Define custom encoding for this class to JSON
-    def encode_CompleteCourse(x):
-        if isinstance(x, CompleteCourse):
-            return { "Course" : x.course, "Topics" : x.courseTopics, "Assignments" : x.courseAssignments}
-        else:
-            type_name = z.__class__.__name__
-            raise TypeError(f"Object of type '{type_name}' is not JSON serializable")
 
     # Call the Classroom API
     results = service.courses().list(pageSize=10).execute()
@@ -227,7 +228,7 @@ def main():
                                     
                      
     #Dump all course information to JSON file gc_data.json
-    with open("gc_data.json", "w") as gc_data
+    with open("gc_data.json", "w") as gc_data:
         json.dump(thisCourse,gc_data,indent=1,default=encode_CompleteCourse)
             
 
