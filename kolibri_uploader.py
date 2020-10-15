@@ -7,6 +7,7 @@ from ricecooker.classes.files import DocumentFile, AudioFile, VideoFile, YouTube
 from ricecooker.classes.licenses import get_license
 import json
 import requests
+import copy
 from slugify import slugify
 
 """
@@ -27,34 +28,60 @@ from slugify import slugify
 class MyChef(SushiChef):
     with open('gc_data.json', mode='r') as gc_data:
         global courseData
+        global courseDataCopy
         courseData = json.load(gc_data)
+        courseDataCopy = copy.deepcopy(courseData)
 
+        if 'description' in courseData['Course']:
 
-        print(courseData)
-
-        channel_info = {
-            "CHANNEL_TITLE": courseData['Course']['name'],
-            "CHANNEL_SOURCE_DOMAIN": courseData['Course']['name'],
-            "CHANNEL_SOURCE_ID": courseData['Course']['alternateLink'],
-            "CHANNEL_LANGUAGE": "en",  # le_utils language code
-            "CHANNEL_THUMBNAIL": courseData['Course']['name'],
-            "CHANNEL_DESCRIPTION": courseData['Course']['description'],
-        }
+            channel_info = {
+                "CHANNEL_TITLE": courseData['Course']['name'],
+                "CHANNEL_SOURCE_DOMAIN": "Google Classroom",
+                "CHANNEL_SOURCE_ID": courseData['Course']['alternateLink'],
+                "CHANNEL_LANGUAGE": "en",  # le_utils language code
+                "CHANNEL_DESCRIPTION": courseData['Course']['description'],
+            }
+        else:
+            channel_info = {
+                "CHANNEL_TITLE": courseData['Course']['name'],
+                "CHANNEL_SOURCE_DOMAIN": "Google Classroom",
+                "CHANNEL_SOURCE_ID": courseData['Course']['alternateLink'],
+                "CHANNEL_LANGUAGE": "en",  # le_utils language code
+            }
 
         def construct_channel(self, **kwargs):
             channel = self.get_channel(**kwargs)
 
+            #Create each topic node
             for t_id, t_info in courseData['Topics'].items():
-                topic = TopicNode(title = t_info['name'], source_id = t_info['topicId'])
+                topic = TopicNode(
+                    title = t_info['name'], 
+                    source_id = t_info['topicId'],
+                    derive_thumbnail=True,
+                    thumbnail=None
+                )
                 channel.add_child(topic)
 
+                #Iterate thtough assignments and add them if they match the topic
                 for a_id, a_info in courseData['Assignments'].items():
-                    try:
-                        assignment = TopicNode(title = a_info['title'], source_id = a_info['id'], description = a_info['description'])
-                    except:
-                        assignment = TopicNode(title = a_info['title'], source_id = a_info['id'])
-
-                    if a_info['topicId'] == t_info['topicId']:
+                    if 'topicId' in a_info and a_info['topicId'] == t_info['topicId']:
+                        try:
+                            assignment = TopicNode(
+                                title = a_info['title'],
+                                source_id = a_info['id'],
+                                description = a_info['description'],
+                                language='en',
+                                derive_thumbnail=True,
+                                thumbnail=None
+                            )
+                        except:
+                            assignment = TopicNode(
+                                title = a_info['title'], 
+                                source_id = a_info['id'],
+                                language='en',
+                                derive_thumbnail=True,
+                                thumbnail=None
+                            )
                         topic.add_child(assignment)
 
                         if "materials" in a_info:
@@ -92,19 +119,81 @@ class MyChef(SushiChef):
                                         title=spec_mat["driveFile"]["driveFile"]["title"],
                                         language=getlang('en').id,
                                         license=get_license(licenses.CC_BY, copyright_holder='Copyright holder name'),
+                                        derive_thumbnail=True,
                                         thumbnail=None,
                                         files=[DocumentFile(
-                                                    path=str(docPath),
-                                                    language=getlang('en').id
+                                            path=str(docPath),
+                                            language=getlang('en').id
                                             )]
                                     )
                                     assignment.add_child(document_node)
-                                    
-                                    
-                                   
-                              
+                                    print(courseDataCopy["Assignments"])
 
-                 
+                    elif 'topicId' not in a_info and a_id in courseDataCopy["Assignments"]:
+                        try:
+                            assignment = TopicNode(
+                                title = a_info['title'],
+                                source_id = a_info['id'],
+                                description = a_info['description'],
+                                language='en',
+                                derive_thumbnail=True,
+                                thumbnail=None
+                            )
+                        except:
+                            assignment = TopicNode(
+                                title = a_info['title'], 
+                                source_id = a_info['id'],
+                                language='en',
+                                derive_thumbnail=True,
+                                thumbnail=None
+                            )
+
+                        channel.add_child(assignment)
+
+                        if "materials" in a_info:
+                            for spec_mat in a_info["materials"]:
+
+                                if "youtubeVideo" in spec_mat:
+                                
+                                    video_node = VideoNode(
+                                        source_id= spec_mat["youtubeVideo"]["id"],  # usually set source_id to youtube_id
+                                        title=spec_mat["youtubeVideo"]["title"],
+                                        license=get_license(licenses.CC_BY, copyright_holder='Copyright holder name'),
+                                        language=getlang('en').id,
+                                        derive_thumbnail=True,  # video-specicig flag
+                                        thumbnail=None,
+                                        files=[
+                                            YouTubeVideoFile(youtube_id=spec_mat["youtubeVideo"]["id"], high_resolution=False, language='en'),
+                                            YouTubeSubtitleFile(youtube_id=spec_mat["youtubeVideo"]["id"], language='en')
+                                        ]
+                                    )
+                         
+                                    assignment.add_child(video_node)
+                                elif "link" in spec_mat:
+                                    print("link")
+                                    #Add this case with web scraping
+                                
+                                elif "form" in spec_mat:
+                                    print("form")
+                                    #Might not add this case
+                                elif "driveFile" in spec_mat:
+
+                                    docPath = "documents/" + slugify(spec_mat["driveFile"]["driveFile"]["title"]) + ".pdf"
+
+                                    document_node = DocumentNode(
+                                        source_id=spec_mat["driveFile"]["driveFile"]["id"],
+                                        title=spec_mat["driveFile"]["driveFile"]["title"],
+                                        language=getlang('en').id,
+                                        license=get_license(licenses.CC_BY, copyright_holder='Copyright holder name'),
+                                        derive_thumbnail=True,
+                                        thumbnail=None,
+                                        files=[DocumentFile(
+                                            path=str(docPath),
+                                            language=getlang('en').id
+                                            )]
+                                    )
+                                    assignment.add_child(document_node)
+                        del courseDataCopy['Assignments'][a_id]
             return channel
 
         
