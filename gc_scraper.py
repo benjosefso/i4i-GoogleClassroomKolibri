@@ -44,7 +44,8 @@ docMime = {"application/msword",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.template",
             "application/vnd.ms-word.document.macroEnabled.12",
-            "application/vnd.ms-word.template.macroEnabled.12"
+            "application/vnd.ms-word.template.macroEnabled.12",
+            "text/plain"
 }
 exMime = {"application/vnd.ms-excel",
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -234,3 +235,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
