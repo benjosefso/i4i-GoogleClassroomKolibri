@@ -1,6 +1,7 @@
 from __future__ import print_function
 import pickle
 import os.path
+import logging, sys
 import json
 import io
 import os
@@ -10,6 +11,9 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.http import MediaIoBaseDownload
 from googleapiclient.http import MediaFileUpload
+
+# Added logging for tracking errors 
+logging.basicConfig(filename='scrapper.log', level=logging.DEBUG)
 
 # If modifying these scopes, delete the file token.pickle.
 SCOPES = ['https://www.googleapis.com/auth/classroom.courses.readonly',
@@ -174,6 +178,8 @@ def main():
         results = service.courses().topics().list(courseId=selectedCourseId).execute()
         topicslist = results.get('topic', [])
 
+        logging.debug(topicslist)
+
         if not topicslist:
                 print('No topics found.')
         else:
@@ -184,6 +190,8 @@ def main():
         #Retrieve list of coursework
         results = service.courses().courseWorkMaterials().list(courseId=selectedCourseId).execute()
         courseworksmaterial = results.get('courseWorkMaterial', [])
+
+        logging.debug(courseworksmaterial)
 
         if not courseworksmaterial:
             print('No coursework found.')
@@ -241,6 +249,8 @@ def main():
 
         results = service.courses().courseWork().list(courseId=selectedCourseId).execute()
         courseworks = results.get('courseWork', [])
+
+        logging.debug(courseworks)
 
         if not courseworks:
             print('No coursework found.')

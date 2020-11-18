@@ -7,7 +7,7 @@ HOW TO RUN
 3. Select the course number when prompted.
 4. Run kolibri_uploader.py and provide your token when prompted.
 5. The uploader should take the JSON file created by the scraper and create the kolibri channel.
-6. At this point you must log on to Kolibri Studio, open the created channel, 
+6. At this point you must log on to Kolibri Studio, open the created channel,
    and hit the update button to see your changes.
 
 
@@ -23,4 +23,6 @@ https://developers.google.com/drive/api/v3/quickstart/python
 My google classroom api credential file is provided but you can get your own at the link above.
 You must authorize google drive by adding it to your api project at this link https://console.developers.google.com/
 
-Also pip install slugify
+Also pip install python-slugify
+
+** Note for YouTube Videos to download make sure to run, on Mac /Application/Python3.7/Update Shell Profile.command and /Application/Python3.7Install Certificates.command otherwise you will run into SSL Errors. **
