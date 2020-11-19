@@ -1,6 +1,7 @@
 from __future__ import print_function
 import pickle
 import os.path
+import logging, sys
 import json
 import io
 import os
@@ -10,6 +11,9 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.http import MediaIoBaseDownload
 from googleapiclient.http import MediaFileUpload
+
+# Added logging for tracking errors
+logging.basicConfig(filename='scrapper.log', level=logging.DEBUG)
 
 # If modifying these scopes, delete the file token.pickle.
 SCOPES = ['https://www.googleapis.com/auth/classroom.courses.readonly',
@@ -62,7 +66,8 @@ imgMime = {"image/bmp", "image/gif", "image/jpeg", "image/vnd.microsoft.icon",
 gooMime = {"application/vnd.google-apps.document",
             "application/vnd.google-apps.presentation",
             "application/vnd.google-apps.spreadsheet",
-            "application/vnd.google-apps.drawing"
+            "application/vnd.google-apps.drawing",
+            "application/vnd.google-apps.file"
 }
 pdfMime = {"application/pdf",
             "application/x-pdf"
@@ -73,18 +78,18 @@ extensions = {"docx" : "document",
                 "pptx" : "presentation",
                 "xlsx" : "spreadsheet",
                 "png"  : "drawing",
-                "pdf" : "file",
+                "pdf" : "file"
 }
 
 def doc_convert(file_id, file_name, service):
-    converted = service.files().export_media(fileId=file_id,mimeType='application/epub+zip')
+    converted = service.files().export_media(fileId=file_id,mimeType='application/pdf')
     fh = io.BytesIO()
     downloader = MediaIoBaseDownload(fh, converted)
     done = False
     while done is False:
         status, done = downloader.next_chunk()
 
-    with open("documents/" + file_name + ".epub",'wb') as out:
+    with open("documents/" + file_name + ".pdf",'wb') as out:
         out.write(fh.getvalue())
 
 
@@ -107,6 +112,17 @@ def doc_googlfy(ext, file_id, service):
     convertFile = service.files().create(body=file_metadata,media_body=media,fields='id').execute()
     file_id = convertFile['id']
     return file_id
+
+def doc_default(file_id, file_name, service):
+    converted = service.files().get_media(fileId=file_id)
+    fh = io.BytesIO()
+    downloader = MediaIoBaseDownload(fh, converted)
+    done = False
+    while done is False:
+        status, done = downloader.next_chunk()
+
+    with open("documents/" + file_name + ".pdf",'wb') as out:
+        out.write(fh.getvalue())
 
 #Create Comprehensive Course Class to be converted to json
 class CompleteCourse:
@@ -174,6 +190,8 @@ def main():
         results = service.courses().topics().list(courseId=selectedCourseId).execute()
         topicslist = results.get('topic', [])
 
+        logging.debug(topicslist)
+
         if not topicslist:
                 print('No topics found.')
         else:
@@ -184,6 +202,8 @@ def main():
         #Retrieve list of coursework
         results = service.courses().courseWorkMaterials().list(courseId=selectedCourseId).execute()
         courseworksmaterial = results.get('courseWorkMaterial', [])
+
+        logging.debug(courseworksmaterial)
 
         if not courseworksmaterial:
             print('No coursework found.')
@@ -228,9 +248,7 @@ def main():
 
                             #PDF
                             elif file["mimeType"] in pdfMime:
-                                    googId=doc_googlfy("pdf", file_id, service2)
-                                    doc_convert(googId,file_name, service2)
-                                    service2.files().delete(fileId=googId).execute()
+                                    doc_default(file_id,file_name,service2)
 
                             #ALREADY GOOGLE FORMAT
                             elif file["mimeType"] in gooMime:
@@ -241,6 +259,8 @@ def main():
 
         results = service.courses().courseWork().list(courseId=selectedCourseId).execute()
         courseworks = results.get('courseWork', [])
+
+        logging.debug(courseworks)
 
         if not courseworks:
             print('No coursework found.')
